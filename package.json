@@ -1,0 +1,41 @@
+{
+  "name": "yarreader",
+  "version": "1.0.0",
+  "description": "Crash-recoverable comic ingestion pipeline and portable static reader",
+  "license": "MIT",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "bin": {
+    "yar": "dist/src/cli.js"
+  },
+  "files": [
+    "dist/src",
+    "README.md",
+    "ARCHITECTURE.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
+    "test": "npm run build && node --test --test-reporter=spec 'dist/test/**/*.test.js'",
+    "yar": "node dist/src/cli.js",
+    "check": "npm test"
+  },
+  "dependencies": {
+    "commander": "15.0.0",
+    "fast-xml-parser": "5.11.0",
+    "node-unrar-js": "2.0.2",
+    "sharp": "0.35.3",
+    "yauzl": "3.4.0",
+    "yazl": "3.3.1",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "26.2.0",
+    "@types/yauzl": "3.4.0",
+    "@types/yazl": "3.3.1",
+    "typescript": "7.0.2"
+  }
+}
