@@ -7,7 +7,7 @@ import { createServer } from "node:http";
 import { once } from "node:events";
 import { archive } from "../src/archive.js";
 import { classify } from "../src/classification.js";
-import { exportLibrary, validateActiveExport } from "../src/export.js";
+import { exportLibrary, materializePortableExport, validateActiveExport } from "../src/export.js";
 import { initializePaths } from "../src/paths.js";
 import { normalize } from "../src/normalization.js";
 import { scan } from "../src/scanner.js";
@@ -21,7 +21,7 @@ async function readyFixture(t: Parameters<typeof temporaryStore>[0]) {
   return context;
 }
 
-test("transactional export is complete and portable under file URLs", async (t) => {
+test("transactional export is complete and requires no JavaScript under file URLs", async (t) => {
   const { paths, store } = await readyFixture(t);
   const built = await exportLibrary(store);
   assert.equal(built.units, 1);
@@ -29,9 +29,33 @@ test("transactional export is complete and portable under file URLs", async (t) 
   const validation = await validateActiveExport(store);
   assert.equal(validation.units, 1);
   assert.ok((await lstat(paths.activeExport)).isSymbolicLink());
-  const html = await readFile(path.join(paths.activeExport, "index.html"), "utf8");
-  assert.ok(!html.includes("/Users/"));
-  assert.ok(!html.includes("fetch("));
+
+  const rootHtml = await readFile(path.join(paths.activeExport, "index.html"), "utf8");
+  assert.ok(rootHtml.includes('<a href="library/fixture-series/issue-0001/index.html">'));
+  assert.ok(!rootHtml.includes("<script"));
+  assert.ok(!rootHtml.includes("fetch("));
+
+  const unitHtml = await readFile(path.join(paths.activeExport, "library", "fixture-series", "issue-0001", "index.html"), "utf8");
+  assert.equal(unitHtml.match(/<img\b/g)?.length, 2);
+  assert.ok(unitHtml.includes('src="pages/000001.webp"'));
+  assert.ok(unitHtml.includes('src="pages/000002.webp"'));
+  assert.ok(!unitHtml.includes("<script"));
+});
+
+test("portable export materializes a real directory instead of the active symlink", async (t) => {
+  const { root, paths, store } = await readyFixture(t);
+  await exportLibrary(store);
+  assert.ok((await lstat(paths.activeExport)).isSymbolicLink());
+
+  const destination = path.join(root, "usb", "YarReader");
+  const result = await materializePortableExport(store, destination);
+  assert.equal(result.units, 1);
+  assert.equal(result.pages, 2);
+  const info = await lstat(destination);
+  assert.ok(info.isDirectory());
+  assert.ok(!info.isSymbolicLink());
+  const html = await readFile(path.join(destination, "index.html"), "utf8");
+  assert.ok(html.includes("fixture-series/issue-0001/index.html"));
 });
 
 test("export membership validation is order-independent for fractional identities", async (t) => {
