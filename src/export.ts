@@ -1,9 +1,9 @@
-import { copyFile, lstat, mkdir, readFile, readlink, rename, rm, stat, symlink, writeFile } from "node:fs/promises";
+import { copyFile, cp, lstat, mkdir, readFile, readlink, rename, rm, stat, symlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
 import type { CatalogStore } from "./catalog.js";
-import { nowIso, type Catalog, type ExportBuildSchema, type UnitRecord } from "./domain.js";
-import { fsyncDirectory, fsyncFile, listTree, safeJoin, sha256File, sha256Text } from "./fs.js";
+import { nowIso, type Catalog, type UnitRecord } from "./domain.js";
+import { fsyncDirectory, fsyncFile, listTree, safeJoin, sha256File } from "./fs.js";
 import { verifyNormalization } from "./normalization.js";
 
 const ManifestSchema = z.object({
@@ -32,49 +32,42 @@ function selectedRelease(unit: UnitRecord) {
 }
 
 function escapeHtml(value: string): string {
-  return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
 }
-
-const APP_JS = `(() => {
-  const q = (s) => document.querySelector(s);
-  const catalog = window.YAR_CATALOG;
-  if (q('[data-library]')) {
-    const root = q('[data-library]');
-    const groups = new Map();
-    for (const unit of catalog.units) {
-      const list = groups.get(unit.series) || [];
-      list.push(unit); groups.set(unit.series, list);
-    }
-    for (const [series, units] of [...groups].sort((a,b)=>a[0].localeCompare(b[0]))) {
-      const section = document.createElement('section');
-      const h = document.createElement('h2'); h.textContent = series; section.append(h);
-      const list = document.createElement('ol');
-      for (const unit of units) { const li=document.createElement('li'); const a=document.createElement('a'); a.href='library/'+unit.id+'/index.html'; a.textContent=unit.title || unit.label; li.append(a); list.append(li); }
-      section.append(list); root.append(section);
-    }
-  }
-  if (window.YAR_UNIT) {
-    const root=q('[data-pages]');
-    for (const page of window.YAR_UNIT.pages) { const img=document.createElement('img'); img.loading='lazy'; img.decoding='async'; img.src='pages/'+page; img.alt=''; root.append(img); }
-  }
-})();\n`;
 
 const APP_CSS = `:root{color-scheme:dark;background:#111;color:#eee;font:16px system-ui,sans-serif}body{margin:0 auto;max-width:80rem;padding:1rem}a{color:#9bd}section{border-top:1px solid #333;margin-top:1rem}.reader{max-width:none;padding:0}.reader header{position:sticky;top:0;background:#111e;padding:.6rem;z-index:2}.pages{display:flex;flex-direction:column;align-items:center}.pages img{display:block;max-width:100%;height:auto}ol{line-height:1.7}\n`;
 
-function catalogPayload(units: UnitRecord[]): string {
-  const records = units.map((unit) => {
-    const release = selectedRelease(unit)!;
-    const normalization = release.normalization!;
-    const labelNumber = unit.chapter ?? unit.issue ?? unit.sequence ?? unit.volume;
-    return {
-      id: unit.id,
-      series: unit.series,
-      label: `${unit.unitType}${labelNumber === undefined ? "" : ` ${labelNumber}`}`,
-      ...(unit.title ? { title: unit.title } : {}),
-      pageCount: normalization.pageCount
-    };
-  });
-  return JSON.stringify({ schemaVersion: 1, units: records }).replaceAll("<", "\\u003c");
+function unitLabel(unit: UnitRecord): string {
+  const labelNumber = unit.chapter ?? unit.issue ?? unit.sequence ?? unit.volume;
+  return unit.title ?? `${unit.unitType}${labelNumber === undefined ? "" : ` ${labelNumber}`}`;
+}
+
+function libraryMarkup(units: UnitRecord[]): string {
+  const groups = new Map<string, UnitRecord[]>();
+  for (const unit of units) {
+    const group = groups.get(unit.series) ?? [];
+    group.push(unit);
+    groups.set(unit.series, group);
+  }
+  return [...groups.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0], "en", { numeric: true, sensitivity: "base" }))
+    .map(([series, members]) => {
+      const items = members.map((unit) => {
+        const href = path.posix.join("library", unit.id, "index.html");
+        return `<li><a href="${escapeHtml(href)}">${escapeHtml(unitLabel(unit))}</a></li>`;
+      }).join("");
+      return `<section><h2>${escapeHtml(series)}</h2><ol>${items}</ol></section>`;
+    }).join("");
+}
+
+function documentHtml(title: string, body: string, bodyClass = ""): string {
+  const classAttribute = bodyClass ? ` class="${escapeHtml(bodyClass)}"` : "";
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)}</title><style>${APP_CSS}</style></head><body${classAttribute}>${body}</body></html>\n`;
 }
 
 async function writeAndSync(file: string, content: string | Buffer): Promise<void> {
@@ -91,10 +84,12 @@ async function buildStage(store: CatalogStore, catalog: Catalog, stage: string, 
     const release = selectedRelease(unit);
     if (!release?.normalization || !(await verifyNormalization(store, release.normalization))) throw new Error(`Selected release is not normalized: ${unit.id}`);
   });
-  await writeAndSync(path.join(stage, "assets", "app.js"), APP_JS);
-  await writeAndSync(path.join(stage, "assets", "app.css"), APP_CSS);
-  await writeAndSync(path.join(stage, "catalog.js"), `window.YAR_CATALOG=${catalogPayload(units)};\n`);
-  await writeAndSync(path.join(stage, "index.html"), `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>YarReader</title><link rel="stylesheet" href="assets/app.css"></head><body><h1>YarReader</h1><main data-library></main><script src="catalog.js"></script><script src="assets/app.js"></script></body></html>\n`);
+
+  await writeAndSync(
+    path.join(stage, "index.html"),
+    documentHtml("YarReader", `<h1>YarReader</h1><main data-library>${libraryMarkup(units)}</main>`)
+  );
+
   const manifestUnits: Manifest["units"] = [];
   for (const unit of units) {
     const normalization = selectedRelease(unit)!.normalization!;
@@ -109,12 +104,19 @@ async function buildStage(store: CatalogStore, catalog: Catalog, stage: string, 
       await fsyncFile(path.join(pagesRoot, outputName));
       pageNames[index] = outputName;
     });
-    const unitJson = JSON.stringify({ id: unit.id, pages: pageNames }).replaceAll("<", "\\u003c");
-    await writeAndSync(path.join(unitRoot, "index.html"), `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(unit.title ?? unit.id)}</title><link rel="stylesheet" href="../../../assets/app.css"></head><body class="reader"><header><a href="../../../index.html">Library</a> · ${escapeHtml(unit.series)}</header><main class="pages" data-pages></main><script>window.YAR_UNIT=${unitJson};</script><script src="../../../assets/app.js"></script></body></html>\n`);
+
+    const unitRelativeIndex = path.posix.join("library", unit.id, "index.html");
+    const libraryHref = path.posix.relative(path.posix.dirname(unitRelativeIndex), "index.html") || "index.html";
+    const pageMarkup = pageNames.map((page, index) =>
+      `<img src="pages/${escapeHtml(page)}" loading="${index === 0 ? "eager" : "lazy"}" decoding="async" alt="Page ${index + 1}">`
+    ).join("");
+    const body = `<header><a href="${escapeHtml(libraryHref)}">Library</a> · ${escapeHtml(unit.series)}</header><main class="pages" data-pages>${pageMarkup}</main>`;
+    await writeAndSync(path.join(unitRoot, "index.html"), documentHtml(unit.title ?? unit.id, body, "reader"));
     await fsyncDirectory(pagesRoot);
     await fsyncDirectory(unitRoot);
     manifestUnits.push({ id: unit.id, pageCount: pageNames.length });
   }
+
   const files: Record<string, string> = {};
   const stagedFiles = await listTree(stage);
   const stagedHashes = new Array<string>(stagedFiles.length);
@@ -143,9 +145,20 @@ export async function validateExport(root: string): Promise<{ files: number; uni
     if (/\.(?:html|js|css|json)$/i.test(relative)) {
       const text = await readFile(file, "utf8");
       if (/file:\/\/\/|\/Users\/|[A-Za-z]:\\\\/.test(text)) throw new Error(`Machine path leaked into export: ${relative}`);
-      if (/\bfetch\s*\(|XMLHttpRequest|indexedDB/i.test(text)) throw new Error(`Network/runtime API is forbidden in portable export: ${relative}`);
+      if (/\bfetch\s*\(|XMLHttpRequest|indexedDB|serviceWorker|\bimport\s*\(/i.test(text)) throw new Error(`Network/runtime API is forbidden in portable export: ${relative}`);
+      if (/\.html$/i.test(relative) && /<script\b/i.test(text)) throw new Error(`JavaScript is forbidden in portable reader HTML: ${relative}`);
     }
   });
+
+  const rootHtml = await readFile(path.join(root, "index.html"), "utf8");
+  if (!rootHtml.includes("<main data-library>")) throw new Error("Portable root index is missing its static library markup");
+  for (const unit of manifest.units) {
+    const unitIndex = safeJoin(root, "library", ...unit.id.split("/"), "index.html");
+    const html = await readFile(unitIndex, "utf8");
+    const imageCount = html.match(/<img\b[^>]*\bsrc="pages\/[^"]+"/gi)?.length ?? 0;
+    if (imageCount !== unit.pageCount) throw new Error(`Portable unit HTML does not contain every page image: ${unit.id}`);
+  }
+
   const pages = manifest.units.reduce((sum, unit) => sum + unit.pageCount, 0);
   if (pages === 0 && manifest.units.length > 0) throw new Error("Export units contain no pages");
   return { files: expected.length + 1, units: manifest.units.length, pages, manifestSha256: await sha256File(manifestPath) };
@@ -161,6 +174,40 @@ async function activeTarget(store: CatalogStore): Promise<string | undefined> {
     return resolved;
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
+    throw error;
+  }
+}
+
+async function pathExists(target: string): Promise<boolean> {
+  try {
+    await lstat(target);
+    return true;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return false;
+    throw error;
+  }
+}
+
+export async function materializePortableExport(store: CatalogStore, destination: string): Promise<{ destination: string; files: number; units: number; pages: number; manifestSha256: string }> {
+  const target = await activeTarget(store);
+  if (!target) throw new Error("No active export exists");
+  await validateExport(target);
+
+  const destinationRoot = path.resolve(destination);
+  if (await pathExists(destinationRoot)) throw new Error(`Portable export destination already exists: ${destinationRoot}`);
+  const parent = path.dirname(destinationRoot);
+  await mkdir(parent, { recursive: true });
+  const temporary = path.join(parent, `.${path.basename(destinationRoot)}.portable-${process.pid}`);
+  await rm(temporary, { recursive: true, force: true });
+
+  try {
+    await cp(target, temporary, { recursive: true, dereference: true, errorOnExist: true, force: false, preserveTimestamps: true });
+    await validateExport(temporary);
+    await rename(temporary, destinationRoot);
+    const validation = await validateExport(destinationRoot);
+    return { destination: destinationRoot, ...validation };
+  } catch (error) {
+    await rm(temporary, { recursive: true, force: true }).catch(() => undefined);
     throw error;
   }
 }
