@@ -3,7 +3,7 @@
 YarReader is a local, crash-recoverable ingestion pipeline for comics and other
 page-oriented publications. It turns an unstructured inbox into a verified,
 content-addressed archive and a portable static reader that works directly from
-`file://`.
+local storage.
 
 This is a greenfield implementation. It has one TypeScript package, one `yar`
 CLI, one path authority, and one catalog. It does not import or depend on any
@@ -69,6 +69,7 @@ yar review
 yar normalize
 yar archive
 yar export
+yar portable /path/to/usb/YarReader
 yar validate
 yar build
 yar update
@@ -168,12 +169,49 @@ file without recompressing image payloads.
 
 Exports are built into a sibling staging directory. YarReader hashes and
 validates every staged file, syncs it, renames it to an immutable generation,
-then atomically replaces the `library-001` symlink. A failed stage or activation
-leaves the previous export active.
+then atomically replaces the internal `library-001` symlink. A failed stage or
+activation leaves the previous export active.
 
-The generated reader contains only relative HTML, CSS, JavaScript, WebP pages,
-and a JavaScript catalog assignment. It uses no fetch, server, network,
-database, package runtime, or absolute machine paths.
+The generated reader is intentionally HTML-first. Library navigation and every
+reader page image are emitted as ordinary relative `<a>` and `<img>` markup at
+build time. Critical CSS is inline. The exported reader does not require
+JavaScript, fetch, a server, a network connection, a database, a package
+runtime, browser persistence, or absolute machine paths.
+
+The internal `export/library-001` symlink is for crash-safe generation switching
+on the workstation and should not be copied to removable media. Materialize a
+real directory for a USB drive or tablet instead:
+
+```sh
+yar portable /Volumes/YARR/YarReader
+```
+
+The destination must not already exist. YarReader copies the active immutable
+generation into a normal directory, validates the copied manifest and hashes,
+and leaves the result self-contained. The intended removable-media layout is:
+
+```text
+YarReader/
+  index.html
+  manifest.json
+  library/
+    <series>/
+      <unit>/
+        index.html
+        pages/
+          000001.webp
+          000002.webp
+          ...
+```
+
+Open `index.html` from the removable drive. Browsers and mobile file managers
+that allow normal sibling-file traversal can read the library without running
+JavaScript. Some Android file-provider/browser combinations expose a selected
+HTML document through an isolated `content://` URI and deny access to sibling
+files; that is an Android document-provider restriction, not something an HTML
+file can mark as trusted. In that environment the same materialized directory
+should be opened through an app/WebView that has user-granted directory-tree
+access rather than by weakening WebView file security.
 
 Deleting `work/` and `export/` is safe. Run `yar build`; normalized pages are
 recreated from `archive/` and `state/catalog.json`, then a fresh export is
@@ -232,6 +270,7 @@ yar audit-legacy \
 covering path and symlink safety, stable recursive discovery, duplicate and
 multi-unit identity, deterministic and mock-AI classification, human review,
 normalization, archive preparation/recovery/EXDEV, loose bundles, atomic export
-recovery, all acquisition families, and rebuild from archive plus state.
+recovery, static no-JavaScript portable HTML, materialized removable-media
+exports, all acquisition families, and rebuild from archive plus state.
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for the state model and invariants.
