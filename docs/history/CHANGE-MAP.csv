@@ -28,3 +28,4 @@ YR-026,,YarReader,3661f4e,2026-08-27,decomposed,v0.8.0,series reading modes and 
 YR-027,,YarReader,3661f4e,2026-08-27,privacy-transformed,v0.8.0,external schema-validated series curation
 YR-028,,YarReader,3661f4e,2026-08-27,privacy-transformed,v0.8.0,workspace-configured cover acquisition
 YR-029,,YarReader,3661f4e,2026-08-27,decomposed,v0.8.0,self-contained viewer build pipeline
+YR-030,,YarReader,3661f4e,2026-08-27,decomposed,v0.8.0,curated library navigation
