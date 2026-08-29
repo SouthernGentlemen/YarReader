@@ -1,0 +1,25 @@
+node_modules/
+dist/
+coverage/
+.DS_Store
+*.log
+*.tsbuildinfo
+
+# Runtime data is forbidden in the repository.
+source/
+archive/
+state/
+work/
+export/
+catalog.json
+*.cbz
+*.cbr
+*.epub
+*.pdf
+*.part
+*.crdownload
+*.download
+*.!qb
+*.!qB
+*.partial
+*.tmp
