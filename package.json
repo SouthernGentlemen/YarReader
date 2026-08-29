@@ -13,11 +13,12 @@
   },
   "files": [
     "dist/src",
+    "dist/viewer",
     "README.md"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.viewer.json && node scripts/copy-viewer-assets.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.viewer.json --noEmit",
     "test": "npm run build && node --test --test-reporter=spec 'dist/test/**/*.test.js'"
   },
   "dependencies": {

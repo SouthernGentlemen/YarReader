@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "ES2018",
+    "lib": ["ES2018", "DOM", "DOM.Iterable"],
+    "module": "ES2020",
+    "rootDir": "src/viewer",
+    "outDir": "dist/viewer",
+    "strict": true,
+    "noImplicitOverride": true,
+    "forceConsistentCasingInFileNames": true,
+    "removeComments": false,
+    "declaration": false,
+    "sourceMap": false,
+    "types": []
+  },
+  "include": ["src/viewer/**/*.ts"]
+}
