@@ -1,12 +1,14 @@
 import assert from "node:assert/strict";
-import { lstat, readFile, readlink, writeFile } from "node:fs/promises";
+import { lstat, readFile, readlink, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
 import { acquireFile, acquireHttp, acquirePages } from "../src/acquisition.js";
 import { createServer } from "node:http";
 import { once } from "node:events";
+import { archive } from "../src/archive.js";
 import { classify } from "../src/classification.js";
 import { exportLibrary, validateActiveExport } from "../src/export.js";
+import { initializePaths } from "../src/paths.js";
 import { normalize } from "../src/normalization.js";
 import { scan } from "../src/scanner.js";
 import { listZip } from "../src/zip.js";
@@ -54,6 +56,19 @@ test("failed activation leaves the last valid export active and resumes", async 
   const recovered = await exportLibrary(store);
   assert.equal(recovered.recovered, true);
   assert.equal((await validateActiveExport(store)).units, 2);
+});
+
+test("empty work and export rebuild from archive plus catalog state", async (t) => {
+  const { paths, store } = await readyFixture(t);
+  await archive(store); await exportLibrary(store);
+  await rm(paths.work, { recursive: true, force: true });
+  await rm(paths.exportRoot, { recursive: true, force: true });
+  await initializePaths(paths);
+  const normalized = await normalize(store);
+  assert.equal(normalized.normalized, 1);
+  const rebuilt = await exportLibrary(store);
+  assert.equal(rebuilt.units, 1);
+  assert.equal((await validateActiveExport(store)).pages, 2);
 });
 
 test("file and browser acquisition adapters deposit only into source", async (t) => {
