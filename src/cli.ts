@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { Command } from "commander";
+import { acquireFile, acquireFromManifestFile, acquireHttp } from "./acquisition.js";
 import { archive } from "./archive.js";
 import { CatalogStore } from "./catalog.js";
 import { classify, review } from "./classification.js";
@@ -70,6 +71,18 @@ program.command("build").action(async () => { const { store } = await context(tr
 program.command("update").option("--stable-seconds <n>", "unchanged observation window", "10").action(async (options) => {
   const { store } = await context(true); output(await update(store, Number(options.stableSeconds)));
 });
+program.command("acquire")
+  .argument("<adapter>", "file, browser, http, or pages")
+  .argument("<input>")
+  .option("--name <filename>", "destination filename for HTTP")
+  .action(async (adapter: string, input: string, options) => {
+    const { store } = await context(true);
+    if (adapter === "file") output(await acquireFile(store, input));
+    else if (adapter === "browser") output(await acquireFile(store, input, true));
+    else if (adapter === "http") output(await acquireHttp(store, input, options.name));
+    else if (adapter === "pages") output(await acquireFromManifestFile(store, input));
+    else throw new Error(`Unknown acquisition adapter: ${adapter}`);
+  });
 program.parseAsync().catch((error: unknown) => {
   process.stderr.write(`yar: ${(error as Error).message}\n`);
   process.exitCode = 1;
