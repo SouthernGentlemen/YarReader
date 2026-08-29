@@ -19,6 +19,8 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json && tsc -p tsconfig.viewer.json && node scripts/copy-viewer-assets.mjs",
+    "check:history": "node scripts/check-controlled-history.mjs",
+    "check:safety": "node scripts/check-public-safety.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.viewer.json --noEmit",
     "test": "npm run build && node --test --test-reporter=spec 'dist/test/**/*.test.js'"
   },

@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npm run check:history
+      - run: npm run check:safety
+
+  change-id:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate pull-request title
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          pattern='^\[YR-[0-9]{3,}\] \[(INIT|FEAT|FIX|SEC|REFACTOR|TEST|PERF|DOCS|BUILD|CI|REVERT|CHORE)\] .+'
+          if ! printf '%s' "$TITLE" | grep -Eq "$pattern"; then
+            echo "::error::Title must match [YR-###] [TYPE] <imperative summary>"
+            exit 1
+          fi
