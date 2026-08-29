@@ -1,0 +1,399 @@
+/*
+ * YarReader portable stylesheet.
+ * Self-contained: no stylesheet imports, no hosted fonts, no CDN.
+ * Everything the viewer needs ships inside export/.
+ */
+
+:root {
+  --yar-bg: #0e0f12;
+  --yar-bg-elevated: #17191f;
+  --yar-bg-sunken: #08090b;
+  --yar-line: #262a33;
+  --yar-text: #e8eaf0;
+  --yar-text-dim: #9aa1b1;
+  --yar-accent: #6ea8fe;
+  --yar-accent-soft: rgba(110, 168, 254, 0.16);
+  --yar-danger: #ff8a80;
+  --yar-radius: 10px;
+  --yar-bar-height: 52px;
+  --yar-zoom: 1;
+  --yar-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial,
+    "Noto Sans", sans-serif;
+  color-scheme: dark light;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --yar-bg: #f6f7f9;
+    --yar-bg-elevated: #ffffff;
+    --yar-bg-sunken: #e7e9ee;
+    --yar-line: #d6dae2;
+    --yar-text: #14161b;
+    --yar-text-dim: #5c6474;
+    --yar-accent: #1a63d8;
+    --yar-accent-soft: rgba(26, 99, 216, 0.12);
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--yar-bg);
+  color: var(--yar-text);
+  font-family: var(--yar-font);
+  -webkit-text-size-adjust: 100%;
+}
+
+body.yar-reader-body {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+img {
+  max-width: 100%;
+}
+
+/* ---------------------------------------------------------------- reader */
+
+.yar-app {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  grid-template-rows: var(--yar-bar-height) 1fr var(--yar-bar-height);
+  background: var(--yar-bg-sunken);
+}
+
+.yar-app.yar-chrome-hidden {
+  grid-template-rows: 0 1fr 0;
+}
+
+.yar-app.yar-chrome-hidden .yar-bar {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-6px);
+}
+
+.yar-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  background: var(--yar-bg-elevated);
+  border-bottom: 1px solid var(--yar-line);
+  overflow: hidden;
+  transition: opacity 140ms ease, transform 140ms ease;
+}
+
+.yar-bar-bottom {
+  border-bottom: none;
+  border-top: 1px solid var(--yar-line);
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+.yar-bar-top {
+  padding-top: env(safe-area-inset-top, 0);
+}
+
+.yar-title {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  flex: 1 1 auto;
+  line-height: 1.15;
+}
+
+.yar-title-series {
+  font-size: 12px;
+  color: var(--yar-text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.yar-title-unit {
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.yar-tools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.yar-btn {
+  appearance: none;
+  border: 1px solid var(--yar-line);
+  background: var(--yar-bg);
+  color: var(--yar-text);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1;
+  padding: 10px 12px;
+  min-height: 40px;
+  min-width: 40px;
+  border-radius: var(--yar-radius);
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.yar-btn:active {
+  background: var(--yar-accent-soft);
+  border-color: var(--yar-accent);
+}
+
+.yar-btn-icon {
+  font-size: 18px;
+  font-weight: 700;
+  padding: 8px 10px;
+}
+
+.yar-btn-ghost {
+  color: var(--yar-accent);
+}
+
+.yar-btn-nav {
+  flex: 0 0 auto;
+  min-width: 64px;
+}
+
+.yar-btn-unit {
+  flex: 0 0 auto;
+  min-width: 44px;
+  color: var(--yar-text-dim);
+}
+
+.yar-slider {
+  flex: 1 1 auto;
+  min-width: 60px;
+  accent-color: var(--yar-accent);
+  height: 32px;
+}
+
+.yar-counter {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  color: var(--yar-text-dim);
+  min-width: 74px;
+  text-align: center;
+}
+
+.yar-jump {
+  flex: 0 0 auto;
+  width: 68px;
+  min-height: 40px;
+  padding: 8px;
+  border-radius: var(--yar-radius);
+  border: 1px solid var(--yar-line);
+  background: var(--yar-bg);
+  color: var(--yar-text);
+  font: inherit;
+  font-size: 13px;
+  text-align: center;
+}
+
+/* ----------------------------------------------------------------- stage */
+
+.yar-stage {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  background: var(--yar-bg-sunken);
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  touch-action: pan-x pan-y;
+  scrollbar-gutter: stable;
+}
+
+.yar-single,
+.yar-spread {
+  min-height: 100%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.yar-spread {
+  gap: 2px;
+  align-items: flex-start;
+}
+
+.yar-page {
+  display: block;
+  background: #ffffff;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.yar-page-missing {
+  min-height: 240px;
+  min-width: 180px;
+  background: repeating-linear-gradient(45deg, #2a2d36, #2a2d36 10px, #1f222a 10px, #1f222a 20px);
+  color: var(--yar-danger);
+}
+
+/* Fit modes -------------------------------------------------------------- */
+
+.yar-app[data-fit="width"] .yar-single .yar-page,
+.yar-app[data-fit="width"] .yar-strip .yar-page {
+  width: 100%;
+  height: auto;
+}
+
+.yar-app[data-fit="width"] .yar-spread .yar-page {
+  width: 50%;
+  height: auto;
+}
+
+.yar-app[data-fit="page"] .yar-single,
+.yar-app[data-fit="page"] .yar-spread {
+  height: 100%;
+  align-items: center;
+}
+
+.yar-app[data-fit="page"] .yar-single .yar-page,
+.yar-app[data-fit="page"] .yar-spread .yar-page {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+
+.yar-app[data-fit="page"] .yar-spread .yar-page {
+  max-width: 50%;
+}
+
+.yar-app[data-fit="zoom"] .yar-single .yar-page,
+.yar-app[data-fit="zoom"] .yar-strip .yar-page {
+  width: calc(100% * var(--yar-zoom));
+  max-width: none;
+  height: auto;
+}
+
+.yar-app[data-fit="zoom"] .yar-spread .yar-page {
+  width: calc(50% * var(--yar-zoom));
+  max-width: none;
+  height: auto;
+}
+
+/* Continuous scroll / webtoon ------------------------------------------- */
+
+.yar-strip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.yar-strip-gap .yar-page + .yar-page {
+  margin-top: 6px;
+}
+
+/*
+ * Scroll mode deliberately does NOT set scroll-behavior: smooth. A long
+ * webtoon strip needs native momentum scrolling to feel right on a tablet, and
+ * a forced smooth behaviour also makes programmatic jumps (page indicator,
+ * resume position) land unpredictably. The reader asks for smooth scrolling
+ * explicitly, per gesture, where it actually wants it.
+ */
+.yar-app[data-mode="scroll"] .yar-strip {
+  scroll-margin-top: 0;
+}
+
+.yar-app[data-mode="scroll"][data-fit="width"] .yar-strip .yar-page,
+.yar-app[data-mode="scroll"][data-fit="page"] .yar-strip .yar-page {
+  width: 100%;
+  max-width: none;
+  height: auto;
+}
+
+.yar-toast {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--yar-bar-height) + 18px);
+  transform: translate(-50%, 8px);
+  background: rgba(0, 0, 0, 0.78);
+  color: #fff;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.yar-toast-on {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.yar-error {
+  margin: 40px auto;
+  max-width: 520px;
+  padding: 24px;
+  background: var(--yar-bg-elevated);
+  border: 1px solid var(--yar-line);
+  border-radius: var(--yar-radius);
+}
+
+.yar-error h1 {
+  margin: 0 0 8px;
+  font-size: 18px;
+}
+
+.yar-error p {
+  margin: 0;
+  color: var(--yar-text-dim);
+  font-size: 14px;
+}
+
+/* Narrow phones: shed the least essential controls before wrapping. */
+@media (max-width: 560px) {
+  .yar-title-series {
+    display: none;
+  }
+  .yar-jump {
+    display: none;
+  }
+  .yar-btn {
+    padding: 10px;
+  }
+  .yar-counter {
+    min-width: 62px;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 480px) {
+  :root {
+    --yar-bar-height: 44px;
+  }
+}
+
+@media print {
+  .yar-bar,
+  .yar-toast {
+    display: none;
+  }
+}
