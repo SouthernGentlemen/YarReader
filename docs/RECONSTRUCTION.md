@@ -32,3 +32,7 @@ verified architectural milestones, not from invented historical release events.
 The reconstruction contains application source and synthetic fixtures only. Runtime catalogs,
 media, generated work/exports, acquired covers, credentials, absolute personal paths, device
 identifiers, and the private source-library inventory are intentionally excluded.
+
+In `docs/history/CHANGE-MAP.csv`, `SELF` identifies the final map-completion
+commit because a Git commit cannot contain its own content hash. Every earlier
+row contains the full reconstructed commit hash.

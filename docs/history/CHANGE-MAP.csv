@@ -1,37 +1,38 @@
 public_id,public_sha,source_repo,source_sha,source_date,mapping_type,release,notes
-YR-001,,YarReader,08e2250,2026-08-20,decomposed,v0.1.0,project foundation and minimal CLI
-YR-002,,YarReader,08e2250,2026-08-20,decomposed,v0.1.0,filesystem integrity and path-safety primitives
-YR-003,,YarReader,08e2250,2026-08-20,decomposed,v0.1.0,authoritative workspace and derived paths
-YR-004,,YarReader,08e2250,2026-08-20,decomposed,v0.1.0,versioned catalog and source identity model
-YR-005,,YarReader,08e2250,2026-08-20,decomposed,v0.1.0,deterministic ZIP and stored-bundle primitives
-YR-006,,YarReader,08e2250,2026-08-20,decomposed,v0.1.0,publication inspection adapters
-YR-007,,YarReader,08e2250,2026-08-20,decomposed,v0.1.0,stable recursive discovery
-YR-008,,YarReader,08e2250,2026-08-20,decomposed,v0.2.0,classification proposal and review boundary
-YR-009,,YarReader,08e2250,2026-08-20,decomposed,v0.2.0,multi-unit identity and review regression coverage
-YR-010,,YarReader,08e2250,2026-08-20,decomposed,v0.3.0,verified lossless normalization
-YR-011,,YarReader,08e2250,2026-08-20,decomposed,v0.3.0,content-addressed archive transactions
-YR-012,,YarReader,08e2250,2026-08-20,decomposed,v0.3.0,EXDEV and interrupted-archive recovery tests
-YR-013,,YarReader,08e2250,2026-08-20,decomposed,v0.4.0,immutable export generations
-YR-014,,YarReader,08e2250,2026-08-20,decomposed,v0.4.0,failed export activation recovery test
-YR-015,,YarReader,08e2250,2026-08-20,decomposed,v0.4.0,ordered build and update pipelines
-YR-016,,YarReader,08e2250,2026-08-20,decomposed,v0.4.0,operator CLI for reconstructed pipeline
-YR-017,,YarReader,08e2250,2026-08-20,decomposed,v0.5.0,staged acquisition jobs
-YR-018,,YarReader,08e2250,2026-08-20,decomposed,v0.5.0,archive-only rebuild proof
-YR-019,,YarReader,08e2250,2026-08-20,decomposed,v0.6.0,read-only legacy rebaseline audit
-YR-020,,YarReader,08e2250,2026-08-20,decomposed,v0.6.0,non-destructive legacy migration
-YR-021,,YarReader,08e2250,2026-08-20,decomposed,v0.6.0,legacy identity and curation comparison
-YR-022,,YarReader,08e2250,2026-08-20,decomposed,v0.6.0,runtime boundary and catalog durability tests
-YR-023,,YarReader,3cd292c,2026-08-27,decomposed,v0.7.0,HTML-first no-JavaScript portable export fix
-YR-024,,YarReader,3cd292c,2026-08-27,decomposed,v0.7.0,real-directory portable materialization
-YR-025,,YarReader,3cd292c,2026-08-27,decomposed,v0.7.0,portable export regression coverage
-YR-026,,YarReader,3661f4e,2026-08-27,decomposed,v0.8.0,series reading modes and genres
-YR-027,,YarReader,3661f4e,2026-08-27,privacy-transformed,v0.8.0,external schema-validated series curation
-YR-028,,YarReader,3661f4e,2026-08-27,privacy-transformed,v0.8.0,workspace-configured cover acquisition
-YR-029,,YarReader,3661f4e,2026-08-27,decomposed,v0.8.0,self-contained viewer build pipeline
-YR-030,,YarReader,3661f4e,2026-08-27,decomposed,v0.8.0,curated library navigation
-YR-031,,YarReader,3661f4e,2026-08-27,decomposed,v0.8.0,offline multi-mode reader controls
-YR-032,,YarReader,3661f4e,2026-08-27,privacy-transformed,v0.8.0,progressive viewer export integration
-YR-033,,YarReader,3661f4e,2026-08-27,privacy-transformed,v0.8.0,viewer and static-fallback regression coverage
-YR-034,,YarReader,3661f4e,2026-08-27,decomposed,v1.0.0,public architecture and governance documentation
-YR-035,,YarReader,3661f4e,2026-08-27,decomposed,v1.0.0,CI release and public-history controls
-YR-036,,YarReader,3661f4e,2026-08-27,decomposed,v1.0.0,source audit baseline and release records
+YR-001,cd43478f35c8de8e9d56db9b8bd16aa7b0d98b0a,YarReader,08e2250,2026-08-20,decomposed,v0.1.0,project foundation and minimal CLI
+YR-002,ffebda3a703a61107e0244e381a107aaeabc7801,YarReader,08e2250,2026-08-20,decomposed,v0.1.0,filesystem integrity and path-safety primitives
+YR-003,a656045af716b88e9ee392f81cf32c86d73bcff4,YarReader,08e2250,2026-08-20,decomposed,v0.1.0,authoritative workspace and derived paths
+YR-004,174707ffa8b5d2d6dec9a98e3f9f8fa7a59300f6,YarReader,08e2250,2026-08-20,decomposed,v0.1.0,versioned catalog and source identity model
+YR-005,b271ed631a7ee581b1d8e5fda59d439b6651fad9,YarReader,08e2250,2026-08-20,decomposed,v0.1.0,deterministic ZIP and stored-bundle primitives
+YR-006,0d31ced17979e6b63475df0edbf05507524669cd,YarReader,08e2250,2026-08-20,decomposed,v0.1.0,publication inspection adapters
+YR-007,5dab0b74209194c814b49b1123283f80bc6dfd66,YarReader,08e2250,2026-08-20,decomposed,v0.1.0,stable recursive discovery
+YR-008,7aa873b1be674cf1ea9adbdeb81ba8c05f940292,YarReader,08e2250,2026-08-20,decomposed,v0.2.0,classification proposal and review boundary
+YR-009,383bb7ddcf2c63f065e64b2de2b8324833c89066,YarReader,08e2250,2026-08-20,decomposed,v0.2.0,multi-unit identity and review regression coverage
+YR-010,b1ddf0ccb9fdb0c35133e8c99dcf03cfd69112b3,YarReader,08e2250,2026-08-20,decomposed,v0.3.0,verified lossless normalization
+YR-011,45b62301873ddf854519b5351cbff7dfa4430a34,YarReader,08e2250,2026-08-20,decomposed,v0.3.0,content-addressed archive transactions
+YR-012,a307c185694a169d19cf8b785cb04619661d2194,YarReader,08e2250,2026-08-20,decomposed,v0.3.0,EXDEV and interrupted-archive recovery tests
+YR-013,dbd1e267f6bf149d262d29a7e4f8b90869983c16,YarReader,08e2250,2026-08-20,decomposed,v0.4.0,immutable export generations
+YR-014,edffd387dd74c12cb5cff1213bd0ebc6dcec6497,YarReader,08e2250,2026-08-20,decomposed,v0.4.0,failed export activation recovery test
+YR-015,62fe854594d727e4f032f04f75509bcd2d6b4a41,YarReader,08e2250,2026-08-20,decomposed,v0.4.0,ordered build and update pipelines
+YR-016,dd30174f65a542ac1124162deecd60d4dbf5617e,YarReader,08e2250,2026-08-20,decomposed,v0.4.0,operator CLI for reconstructed pipeline
+YR-017,78c1015454820eaa815a66de036514e927cd9c0d,YarReader,08e2250,2026-08-20,decomposed,v0.5.0,staged acquisition jobs
+YR-018,a3b2143c0752bf5c4c92c8f059edb596ff679d66,YarReader,08e2250,2026-08-20,decomposed,v0.5.0,archive-only rebuild proof
+YR-019,6d1a47bb904291cd0cb6b219c29e4a7137d12c9d,YarReader,08e2250,2026-08-20,decomposed,v0.6.0,read-only legacy rebaseline audit
+YR-020,470063cc52585aeb72a870b0668f2e043417564d,YarReader,08e2250,2026-08-20,decomposed,v0.6.0,non-destructive legacy migration
+YR-021,8fa59e2b71b2747cdac8788e68aa34717b5ea7c1,YarReader,08e2250,2026-08-20,decomposed,v0.6.0,legacy identity and curation comparison
+YR-022,e57138a27df719e8c2c6321df05b9f8deabdbe31,YarReader,08e2250,2026-08-20,decomposed,v0.6.0,runtime boundary and catalog durability tests
+YR-023,3184d684ab6d53e722301513ed2b9b297738f3d0,YarReader,3cd292c,2026-08-27,decomposed,v0.7.0,HTML-first no-JavaScript portable export fix
+YR-024,5156ee821c2275fa034ec4df63bb01300f03f015,YarReader,3cd292c,2026-08-27,decomposed,v0.7.0,real-directory portable materialization
+YR-025,8bed969b6d0929c6bcfb5441b8978df04a0de175,YarReader,3cd292c,2026-08-27,decomposed,v0.7.0,portable export regression coverage
+YR-026,87f4cdf4d4fcde05e96d581da326a86085cf2503,YarReader,3661f4e,2026-08-27,decomposed,v0.8.0,series reading modes and genres
+YR-027,e49077f36b91662c95ecece7234501587c271897,YarReader,3661f4e,2026-08-27,privacy-transformed,v0.8.0,external schema-validated series curation
+YR-028,577eb7b4d77d88d26cedc2a31e2be3137c72ba0b,YarReader,3661f4e,2026-08-27,privacy-transformed,v0.8.0,workspace-configured cover acquisition
+YR-029,fb19e101be19914e47b69d36b0884cd4c3bcb8a6,YarReader,3661f4e,2026-08-27,decomposed,v0.8.0,self-contained viewer build pipeline
+YR-030,71d7d9406a25c218a69430602937e60e5cbe8f94,YarReader,3661f4e,2026-08-27,decomposed,v0.8.0,curated library navigation
+YR-031,564c10216daa87a80454cab0cac801279026c356,YarReader,3661f4e,2026-08-27,decomposed,v0.8.0,offline multi-mode reader controls
+YR-032,5f5b3ed06cfcc5e7e278a4f8f67c8e63cec557aa,YarReader,3661f4e,2026-08-27,privacy-transformed,v0.8.0,progressive viewer export integration
+YR-033,923b51d71de784637a8a1ffacdc819d86404aa61,YarReader,3661f4e,2026-08-27,privacy-transformed,v0.8.0,viewer and static-fallback regression coverage
+YR-034,d66364fec3ed871912ba4decd61f1dc22f96e755,YarReader,3661f4e,2026-08-27,decomposed,v1.0.0,public architecture and governance documentation
+YR-035,ad55ae1f621c45043e41641590bfdc376e7453a4,YarReader,3661f4e,2026-08-27,decomposed,v1.0.0,CI release and public-history controls
+YR-036,558f11726e8a87af31f6150f36122df4da4fa031,YarReader,3661f4e,2026-08-27,decomposed,v1.0.0,source audit baseline and release records
+YR-037,SELF,YarReader,3661f4e,2026-08-27,decomposed,v1.0.0,completed provenance and publication record
