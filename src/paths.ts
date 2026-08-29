@@ -10,10 +10,12 @@ export interface YarPaths {
   archive: string;
   state: string;
   work: string;
+  thumbnails: string;
   exportRoot: string;
   activeExport: string;
   catalog: string;
   curation: string;
+  covers: string;
 }
 
 export function projectRoot(): string {
@@ -30,10 +32,12 @@ export async function resolvePaths(workspaceInput?: string): Promise<YarPaths> {
     archive: safeJoin(workspace, "archive"),
     state: safeJoin(workspace, "state"),
     work: safeJoin(workspace, "work"),
+    thumbnails: safeJoin(workspace, "work", "thumbnails-v1"),
     exportRoot: safeJoin(workspace, "export"),
     activeExport: safeJoin(workspace, "export", "library-001"),
     catalog: safeJoin(workspace, "state", "catalog.json"),
-    curation: safeJoin(workspace, "state", "series-curation.json")
+    curation: safeJoin(workspace, "state", "series-curation.json"),
+    covers: safeJoin(workspace, "state", "covers")
   };
   const realProject = await nearestRealPath(project);
   const realWorkspace = await nearestRealPath(workspace);
@@ -59,4 +63,6 @@ export async function initializePaths(paths: YarPaths): Promise<void> {
     const info = await lstat(root);
     if (!info.isDirectory() || info.isSymbolicLink()) throw new Error(`Unsafe runtime root: ${root}`);
   }
+  await mkdir(paths.thumbnails, { recursive: true });
+  await mkdir(paths.covers, { recursive: true });
 }

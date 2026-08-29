@@ -5,6 +5,7 @@ import { acquireFile, acquireFromManifestFile, acquireHttp } from "./acquisition
 import { archive } from "./archive.js";
 import { CatalogStore } from "./catalog.js";
 import { classify, review } from "./classification.js";
+import { fetchSeriesCovers } from "./covers.js";
 import { exportLibrary, materializePortableExport, validateActiveExport, validateExport } from "./export.js";
 import { atomicWriteJson } from "./fs.js";
 import { auditLegacyCatalog } from "./legacy-audit.js";
@@ -68,6 +69,9 @@ program.command("normalize")
   const { store } = await context(true); output(options.reconcileOnly ? await reconcileNormalizationPageCounts(store) : await normalize(store, { failedOnly: Boolean(options.failedOnly), unverifiedOnly: Boolean(options.unverifiedOnly) }));
 });
 program.command("archive").action(async () => { const { store } = await context(true); output(await archive(store)); });
+program.command("covers").description("fetch and optimize curated series cover art").action(async () => {
+  const { store } = await context(true); output(await fetchSeriesCovers(store));
+});
 program.command("export").action(async () => { const { store } = await context(true); output(await exportLibrary(store)); });
 program.command("portable")
   .description("materialize the active reader as a real, self-contained directory for USB/tablet use")
