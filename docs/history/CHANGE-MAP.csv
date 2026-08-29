@@ -10,3 +10,4 @@ YR-008,,YarReader,08e2250,2026-08-20,decomposed,v0.2.0,classification proposal a
 YR-009,,YarReader,08e2250,2026-08-20,decomposed,v0.2.0,multi-unit identity and review regression coverage
 YR-010,,YarReader,08e2250,2026-08-20,decomposed,v0.3.0,verified lossless normalization
 YR-011,,YarReader,08e2250,2026-08-20,decomposed,v0.3.0,content-addressed archive transactions
+YR-012,,YarReader,08e2250,2026-08-20,decomposed,v0.3.0,EXDEV and interrupted-archive recovery tests

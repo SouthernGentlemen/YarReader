@@ -93,6 +93,46 @@ test("loose directories become verified lossless bundles preserving relative nam
   await assert.rejects(lstat(sourceDirectory));
 });
 
+test("EXDEV archive fallback copies, fsyncs, hashes, renames, and removes inbox input", async (t) => {
+  const { root, paths, store } = await temporaryStore(t);
+  await fixtureCbz(root, path.join(paths.source, "Fixture 001.cbz"));
+  await scan(store, 0); await classify(store); await normalize(store);
+  let renameCalls = 0;
+  const io: ArchiveIO = {
+    rename: async (source, destination) => {
+      renameCalls += 1;
+      if (renameCalls === 1) { const error = new Error("cross-device") as NodeJS.ErrnoException; error.code = "EXDEV"; throw error; }
+      await rename(source, destination);
+    },
+    copyFile
+  };
+  const result = await archive(store, io);
+  assert.equal(result.archived, 1);
+  assert.ok(renameCalls >= 2);
+  const occurrence = Object.values((await store.load()).occurrences)[0]!;
+  assert.equal(await sha256File(path.join(paths.archive, occurrence.archiveRelative!)), occurrence.sourceId);
+});
+
+test("archive resumes after interruption between EXDEV verification and activation", async (t) => {
+  const { root, paths, store } = await temporaryStore(t);
+  await fixtureCbz(root, path.join(paths.source, "Fixture 001.cbz"));
+  await scan(store, 0); await classify(store); await normalize(store);
+  let renameCalls = 0;
+  const interrupted: ArchiveIO = {
+    rename: async (source, destination) => {
+      renameCalls += 1;
+      if (renameCalls === 1) { const error = new Error("cross-device") as NodeJS.ErrnoException; error.code = "EXDEV"; throw error; }
+      throw new Error("simulated power loss");
+    },
+    copyFile
+  };
+  assert.equal((await archive(store, interrupted)).failed.length, 1);
+  assert.equal(Object.values((await store.load()).archiveTransactions)[0]!.status, "prepared");
+  const resumed = await archive(store);
+  assert.equal(resumed.recovered, 1);
+  assert.equal(Object.values((await store.load()).archiveTransactions)[0]!.status, "completed");
+});
+
 test("normalization detects missing or changed pages", async (t) => {
   const { root, paths, store } = await temporaryStore(t);
   await fixtureCbz(root, path.join(paths.source, "Fixture 001.cbz"));
