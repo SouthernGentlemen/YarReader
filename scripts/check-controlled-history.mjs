@@ -2,6 +2,10 @@ import { execFileSync } from "node:child_process";
 
 const raw = execFileSync("git", ["log", "--reverse", "--format=%H%x1f%s%x1f%b%x1e"], { encoding: "utf8" });
 const records = raw.split("\x1e").map((record) => record.trim()).filter(Boolean);
+if (process.env.GITHUB_EVENT_NAME === "pull_request") {
+  const subject = records.at(-1)?.split("\x1f")[1] ?? "";
+  if (/^Merge [0-9a-f]+ into [0-9a-f]+$/.test(subject)) records.pop();
+}
 const titlePattern = /^\[YR-(\d{3,})\] \[(INIT|FEAT|FIX|SEC|REFACTOR|TEST|PERF|DOCS|BUILD|CI|REVERT|CHORE)\] .+/;
 const requiredSections = ["Change", "Reason", "Impact", "Risk", "Controls", "Validation", "Evidence", "Source", "Release"];
 const seen = new Set();

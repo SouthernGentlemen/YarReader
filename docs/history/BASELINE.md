@@ -8,6 +8,7 @@
 | v0.7.0 | `3cd292c` portable correction | HTML-first reader and real-directory materialization retained as a visible forward fix; 40 tests |
 | v0.8.0 | `3661f4e` curated viewer | Viewer, cover, thumbnail, catalog, and 45-test behavior retained; private title inventory transformed into workspace configuration |
 | v1.0.0 | Current verified public baseline | v0.8 behavior plus public documentation, CI, release controls, provenance, and safety gates |
+| v1.0.1 | Public governance correction | Removes automated version-update PRs that cannot carry assigned YR IDs; repository security alerts remain enabled |
 
 ## Preserved guarantees
 
