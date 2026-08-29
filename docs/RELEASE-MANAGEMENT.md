@@ -11,6 +11,6 @@ Before tagging a release:
 4. Confirm the release notes and provenance map.
 5. Create and push the annotated tag only after `main` is protected and green.
 
-The v0.x tags document reconstructed architectural milestones. v1.0.0 is the
+The v0.x tags document reconstructed architectural milestones. v1.0.1 is the
 current verified public baseline. Source dates remain provenance metadata and
 are not used to backdate reconstructed commits or releases.
