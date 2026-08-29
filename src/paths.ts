@@ -13,6 +13,7 @@ export interface YarPaths {
   exportRoot: string;
   activeExport: string;
   catalog: string;
+  curation: string;
 }
 
 export function projectRoot(): string {
@@ -31,7 +32,8 @@ export async function resolvePaths(workspaceInput?: string): Promise<YarPaths> {
     work: safeJoin(workspace, "work"),
     exportRoot: safeJoin(workspace, "export"),
     activeExport: safeJoin(workspace, "export", "library-001"),
-    catalog: safeJoin(workspace, "state", "catalog.json")
+    catalog: safeJoin(workspace, "state", "catalog.json"),
+    curation: safeJoin(workspace, "state", "series-curation.json")
   };
   const realProject = await nearestRealPath(project);
   const realWorkspace = await nearestRealPath(workspace);

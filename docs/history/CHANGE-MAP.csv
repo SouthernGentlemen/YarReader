@@ -25,3 +25,4 @@ YR-023,,YarReader,3cd292c,2026-08-27,decomposed,v0.7.0,HTML-first no-JavaScript 
 YR-024,,YarReader,3cd292c,2026-08-27,decomposed,v0.7.0,real-directory portable materialization
 YR-025,,YarReader,3cd292c,2026-08-27,decomposed,v0.7.0,portable export regression coverage
 YR-026,,YarReader,3661f4e,2026-08-27,decomposed,v0.8.0,series reading modes and genres
+YR-027,,YarReader,3661f4e,2026-08-27,privacy-transformed,v0.8.0,external schema-validated series curation

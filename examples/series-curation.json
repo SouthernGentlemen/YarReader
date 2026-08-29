@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "series": [
+    {
+      "series": "Example Longform",
+      "seriesSlug": "example-longform",
+      "readingMode": "scroll",
+      "genres": ["Example"],
+      "coverPageUrl": "https://example.com/example-longform"
+    }
+  ],
+  "merges": [
+    {
+      "sourceSlugs": ["example-saga-part-one", "example-saga-part-two"],
+      "targetSeries": "Example Saga",
+      "targetSeriesSlug": "example-saga"
+    }
+  ]
+}
