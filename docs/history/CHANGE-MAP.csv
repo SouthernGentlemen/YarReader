@@ -18,3 +18,4 @@ YR-016,,YarReader,08e2250,2026-08-20,decomposed,v0.4.0,operator CLI for reconstr
 YR-017,,YarReader,08e2250,2026-08-20,decomposed,v0.5.0,staged acquisition jobs
 YR-018,,YarReader,08e2250,2026-08-20,decomposed,v0.5.0,archive-only rebuild proof
 YR-019,,YarReader,08e2250,2026-08-20,decomposed,v0.6.0,read-only legacy rebaseline audit
+YR-020,,YarReader,08e2250,2026-08-20,decomposed,v0.6.0,non-destructive legacy migration

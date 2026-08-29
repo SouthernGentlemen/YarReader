@@ -8,6 +8,7 @@ import { classify, review } from "./classification.js";
 import { exportLibrary, validateActiveExport, validateExport } from "./export.js";
 import { atomicWriteJson } from "./fs.js";
 import { normalize, reconcileNormalizationPageCounts } from "./normalization.js";
+import { migrateLegacy } from "./migration.js";
 import { resolvePaths, initializePaths } from "./paths.js";
 import { build, update } from "./pipeline.js";
 import { rebaselineDryRun } from "./rebaseline.js";
@@ -95,6 +96,22 @@ program.command("rebaseline")
     const report = await rebaselineDryRun(options.input, legacy);
     if (options.output) { await atomicWriteJson(options.output, report); output({ report: options.output, totals: report.totals, discrepancies: report.discrepancies.length }); }
     else output(report);
+  });
+program.command("migrate")
+  .description("stage stable legacy originals and labeled recovery bundles without deleting legacy files")
+  .requiredOption("--legacy-catalog <path>")
+  .requiredOption("--normalized-root <path>")
+  .requiredOption("--original-root <path...>")
+  .option("--execute", "perform the copy/bundle operations; default is dry-run")
+  .action(async (options: { legacyCatalog: string; normalizedRoot: string; originalRoot: string[]; execute?: boolean }) => {
+    const { store } = await context(true);
+    const result = await migrateLegacy(store, {
+      legacyCatalogPath: options.legacyCatalog,
+      normalizedRoot: options.normalizedRoot,
+      originalRoots: options.originalRoot,
+      ...(options.execute ? { execute: true } : {})
+    });
+    output({ ...result, items: result.items.length > 100 ? result.items.slice(0, 100) : result.items, itemCount: result.items.length });
   });
 program.parseAsync().catch((error: unknown) => {
   process.stderr.write(`yar: ${(error as Error).message}\n`);
