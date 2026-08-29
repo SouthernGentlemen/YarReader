@@ -1,10 +1,13 @@
-import { copyFile, cp, lstat, mkdir, readFile, readlink, rename, rm, stat, symlink, writeFile } from "node:fs/promises";
+import { copyFile, cp, link, lstat, mkdir, readFile, readlink, rename, rm, stat, symlink, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { z } from "zod";
+import sharp from "sharp";
 import type { CatalogStore } from "./catalog.js";
 import { nowIso, type Catalog, type UnitRecord } from "./domain.js";
 import { fsyncDirectory, fsyncFile, listTree, safeJoin, sha256File } from "./fs.js";
 import { verifyNormalization } from "./normalization.js";
+import { applyCatalogCuration, loadSeriesCuration } from "./series-metadata.js";
 
 const ManifestSchema = z.object({
   schemaVersion: z.literal(1),
@@ -40,14 +43,27 @@ function escapeHtml(value: string): string {
     .replaceAll("'", "&#39;");
 }
 
-const APP_CSS = `:root{color-scheme:dark;background:#111;color:#eee;font:16px system-ui,sans-serif}body{margin:0 auto;max-width:80rem;padding:1rem}a{color:#9bd}section{border-top:1px solid #333;margin-top:1rem}.reader{max-width:none;padding:0}.reader header{position:sticky;top:0;background:#111e;padding:.6rem;z-index:2}.pages{display:flex;flex-direction:column;align-items:center}.pages img{display:block;max-width:100%;height:auto}ol{line-height:1.7}\n`;
+const VIEWER_ASSET_NAMES = ["reader.js", "library.js", "reader.css", "library.css"] as const;
+const VIEWER_ROOT = fileURLToPath(new URL("../viewer/", import.meta.url));
+const FAVICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Library"><rect width="64" height="64" rx="12" fill="#17191f"/><rect x="12" y="14" width="12" height="36" rx="2" fill="#6ea8fe"/><rect x="27" y="14" width="10" height="36" rx="2" fill="#9aa1b1"/><rect x="40" y="18" width="12" height="32" rx="2" fill="#e8eaf0"/></svg>\n`;
+const FALLBACK_CSS = `:root{color-scheme:dark;background:#111;color:#eee;font:16px system-ui,sans-serif}body{margin:0 auto;max-width:80rem;padding:1rem}a{color:#9bd}.yar-static-library section{border-top:1px solid #333;margin-top:1rem}.yar-static-library ol{line-height:1.7}.yar-reader-body{max-width:none;padding:0}.reader-fallback header{position:sticky;top:0;background:#111e;padding:.6rem;z-index:2}.reader-fallback img{display:block;max-width:100%;height:auto;margin:0 auto}`;
 
-function unitLabel(unit: UnitRecord): string {
-  const labelNumber = unit.chapter ?? unit.issue ?? unit.sequence ?? unit.volume;
-  return unit.title ?? `${unit.unitType}${labelNumber === undefined ? "" : ` ${labelNumber}`}`;
+function jsString(value: string): string {
+  return JSON.stringify(value).replaceAll("<", "\\u003c");
 }
 
-function libraryMarkup(units: UnitRecord[]): string {
+function pad(value: number, width: number): string {
+  return String(value).padStart(width, "0");
+}
+
+function unitTitle(unit: UnitRecord): string {
+  if (unit.title) return unit.title;
+  const number = unit.chapter ?? unit.issue ?? unit.volume ?? unit.sequence;
+  const label = unit.unitType.charAt(0).toUpperCase() + unit.unitType.slice(1);
+  return number === undefined ? label : `${label} ${number}`;
+}
+
+function libraryMarkup(units: readonly UnitRecord[]): string {
   const groups = new Map<string, UnitRecord[]>();
   for (const unit of units) {
     const group = groups.get(unit.series) ?? [];
@@ -59,21 +75,203 @@ function libraryMarkup(units: UnitRecord[]): string {
     .map(([series, members]) => {
       const items = members.map((unit) => {
         const href = path.posix.join("library", unit.id, "index.html");
-        return `<li><a href="${escapeHtml(href)}">${escapeHtml(unitLabel(unit))}</a></li>`;
+        return `<li><a href="${escapeHtml(href)}">${escapeHtml(unitTitle(unit))}</a></li>`;
       }).join("");
       return `<section><h2>${escapeHtml(series)}</h2><ol>${items}</ol></section>`;
     }).join("");
 }
 
-function documentHtml(title: string, body: string, bodyClass = ""): string {
-  const classAttribute = bodyClass ? ` class="${escapeHtml(bodyClass)}"` : "";
-  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)}</title><style>${APP_CSS}</style></head><body${classAttribute}>${body}</body></html>\n`;
+function unitMetadata(unit: UnitRecord, catalog: Catalog) {
+  const release = selectedRelease(unit)!;
+  const source = catalog.sources[release.sourceId];
+  const inspectedUnit = source?.inspection.units.find((candidate) => candidate.key === release.unitKey);
+  return { ...(source?.inspection.metadata ?? {}), ...(inspectedUnit?.metadata ?? {}) };
+}
+
+function catalogPayload(units: UnitRecord[], catalog: Catalog, seriesCovers: ReadonlySet<string>): string {
+  const items = units.map((unit) => {
+    const release = selectedRelease(unit)!;
+    const normalization = release.normalization!;
+    const metadata = unitMetadata(unit, catalog);
+    const firstPage = path.basename(normalization.pages[0]!.file);
+    const firstMatch = /^(\d+)\.([a-z0-9]+)$/i.exec(firstPage);
+    if (!firstMatch) throw new Error(`Normalized page is not canonically numbered: ${unit.id}:${firstPage}`);
+    const pageDigits = firstMatch[1]!.length;
+    const pageExtension = firstMatch[2]!.toLowerCase();
+    normalization.pages.forEach((page, index) => {
+      const expected = `${pad(index + 1, pageDigits)}.${pageExtension}`;
+      if (path.basename(page.file).toLowerCase() !== expected.toLowerCase()) throw new Error(`Normalized page sequence is not canonical: ${unit.id}:${page.file}`);
+    });
+    const itemPath = `library/${unit.id}/`;
+    const sequence = unit.sequence ?? unit.chapter ?? unit.issue ?? unit.volume ?? 0;
+    const discoveredAt = catalog.sources[release.sourceId]?.discoveredAt;
+    const seriesMetadata = catalog.seriesMetadata[unit.seriesSlug];
+    const readingMode = seriesMetadata?.readingMode ?? metadata.readingMode ?? (metadata.direction === "rtl" ? "rtl" : "ltr");
+    const genres = [...new Map([
+      ...(seriesMetadata?.genres ?? []),
+      ...(metadata.genres ?? []),
+      ...(metadata.tags ?? [])
+    ].map((genre) => [genre.toLocaleLowerCase("en"), genre])).values()].sort((left, right) => left.localeCompare(right, "en", { sensitivity: "base" }));
+    return {
+      path: itemPath,
+      seriesSlug: unit.seriesSlug,
+      series: unit.series,
+      title: unitTitle(unit),
+      ...(unit.volume !== undefined ? { volume: unit.volume } : {}),
+      ...(unit.chapter !== undefined ? { chapter: unit.chapter } : {}),
+      ...(unit.issue !== undefined ? { issue: unit.issue } : {}),
+      sequence,
+      ...(unit.year !== undefined ? { year: unit.year } : {}),
+      ...(metadata.authors?.length ? { authors: metadata.authors } : {}),
+      ...(metadata.artists?.length ? { artists: metadata.artists } : {}),
+      ...(metadata.publisher ? { publisher: metadata.publisher } : {}),
+      ...(metadata.tags?.length ? { tags: metadata.tags } : {}),
+      ...(genres.length ? { genres } : {}),
+      ...(metadata.summary ? { summary: metadata.summary } : {}),
+      ...(metadata.language ? { language: metadata.language } : {}),
+      readingMode,
+      direction: readingMode === "rtl" ? "rtl" : "ltr",
+      pageCount: normalization.pageCount,
+      pageExtension,
+      pageRoot: "pages/",
+      pageDigits,
+      ...(readingMode === "scroll" ? { pageSizes: normalization.pages.map((page) => [page.width, page.height]) } : {}),
+      cover: `${itemPath}pages/${firstPage}`,
+      thumbnail: `${itemPath}thumbnail.webp`,
+      ...(seriesCovers.has(unit.seriesSlug) ? { seriesCover: `covers/${unit.seriesSlug}.webp` } : {}),
+      added: discoveredAt ? Math.floor(Date.parse(discoveredAt) / 1000) : 0,
+      sortTitle: `${unit.series.toLocaleLowerCase("en")} ${pad(sequence, 8)}`
+    };
+  });
+  const payload = JSON.stringify({ schemaVersion: 1, generator: "YarReader", itemCount: items.length, items }).replaceAll("<", "\\u003c");
+  return `window.COMIC_LIBRARY = ${payload};\nwindow.YAR_LIBRARY = window.COMIC_LIBRARY;\n`;
 }
 
 async function writeAndSync(file: string, content: string | Buffer): Promise<void> {
   await mkdir(path.dirname(file), { recursive: true });
   await writeFile(file, content);
   await fsyncFile(file);
+}
+
+async function writeViewerAssets(stage: string): Promise<void> {
+  for (const name of VIEWER_ASSET_NAMES) {
+    await writeAndSync(path.join(stage, name), await readFile(path.join(VIEWER_ROOT, name)));
+  }
+  await writeAndSync(path.join(stage, "assets", "favicon.svg"), FAVICON);
+}
+
+function renderRootHtml(units: readonly UnitRecord[]): string {
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark light">
+<meta name="generator" content="YarReader">
+<title>YarReader</title>
+<link rel="icon" href="./assets/favicon.svg" type="image/svg+xml">
+<style>${FALLBACK_CSS}</style>
+<link rel="stylesheet" href="./reader.css">
+<link rel="stylesheet" href="./library.css">
+</head>
+<body class="yar-library-body">
+<h1>YarReader</h1>
+<main id="library" data-library class="yar-static-library">${libraryMarkup(units)}</main>
+<script src="./catalog.js"></script>
+<script src="./library.js"></script>
+<script>
+  ComicLibrary.start({ root: "./", label: "YarReader" });
+</script>
+</body>
+</html>
+`;
+}
+
+function renderLeafHtml(unit: UnitRecord, rootPrefix: string, pageNames: readonly string[]): string {
+  const itemPath = `library/${unit.id}/`;
+  const pageMarkup = pageNames.map((page, index) =>
+    `<img src="pages/${escapeHtml(page)}" loading="${index === 0 ? "eager" : "lazy"}" decoding="async" alt="Page ${index + 1}">`
+  ).join("");
+  return `<!doctype html>
+<html lang="en" data-yar-unit="${escapeHtml(itemPath)}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark light">
+<meta name="generator" content="YarReader">
+<title>${escapeHtml(`${unit.series} - ${unitTitle(unit)}`)}</title>
+<link rel="icon" href="${rootPrefix}assets/favicon.svg" type="image/svg+xml">
+<style>${FALLBACK_CSS}</style>
+<link rel="stylesheet" href="${rootPrefix}reader.css">
+</head>
+<body class="yar-reader-body">
+<main id="reader" class="reader-fallback" data-pages><header><a href="${rootPrefix}index.html">Library</a> · ${escapeHtml(unit.series)}</header>${pageMarkup}</main>
+<script src="${rootPrefix}catalog.js"></script>
+<script src="${rootPrefix}reader.js"></script>
+<script>
+  ComicReader.start({ path: ${jsString(itemPath)}, root: ${jsString(rootPrefix)} });
+</script>
+</body>
+</html>
+`;
+}
+
+async function publishImmutable(source: string, destination: string): Promise<void> {
+  try {
+    await link(source, destination);
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code !== "EXDEV" && code !== "EPERM" && code !== "ENOTSUP" && code !== "EOPNOTSUPP") throw error;
+    await copyFile(source, destination);
+  }
+  await fsyncFile(destination);
+}
+
+async function publishSeriesCovers(store: CatalogStore, stage: string, units: readonly UnitRecord[]): Promise<Set<string>> {
+  const available = new Set<string>();
+  for (const slug of new Set(units.map((unit) => unit.seriesSlug))) {
+    const source = safeJoin(store.paths.covers, `${slug}.webp`);
+    try {
+      const info = await stat(source);
+      if (!info.isFile()) continue;
+      await mkdir(path.join(stage, "covers"), { recursive: true });
+      await publishImmutable(source, path.join(stage, "covers", `${slug}.webp`));
+      available.add(slug);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
+  }
+  return available;
+}
+
+async function unitThumbnail(store: CatalogStore, normalization: NonNullable<ReturnType<typeof selectedRelease>>["normalization"]): Promise<string> {
+  if (!normalization?.pages.length) throw new Error("Cannot generate a thumbnail for an empty normalization");
+  const firstPage = normalization.pages[0]!;
+  const destination = safeJoin(store.paths.thumbnails, `${firstPage.sha256}.webp`);
+  try {
+    const info = await stat(destination);
+    if (info.isFile() && info.size > 0) return destination;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+  await mkdir(store.paths.thumbnails, { recursive: true });
+  const sourceRoot = safeJoin(store.paths.work, ...normalization.workRelative.split("/"));
+  const temporary = path.join(store.paths.thumbnails, `.${firstPage.sha256}.${process.pid}.webp.tmp`);
+  await rm(temporary, { force: true });
+  try {
+    await sharp(safeJoin(sourceRoot, firstPage.file))
+      .rotate()
+      .resize(320, 480, { fit: "cover", position: "attention" })
+      .webp({ quality: 74, effort: 4 })
+      .toFile(temporary);
+    await fsyncFile(temporary);
+    await rename(temporary, destination);
+    await fsyncDirectory(store.paths.thumbnails);
+    return destination;
+  } catch (error) {
+    await rm(temporary, { force: true });
+    throw error;
+  }
 }
 
 async function buildStage(store: CatalogStore, catalog: Catalog, stage: string, generation: number): Promise<Manifest> {
@@ -84,37 +282,30 @@ async function buildStage(store: CatalogStore, catalog: Catalog, stage: string, 
     const release = selectedRelease(unit);
     if (!release?.normalization || !(await verifyNormalization(store, release.normalization))) throw new Error(`Selected release is not normalized: ${unit.id}`);
   });
-
-  await writeAndSync(
-    path.join(stage, "index.html"),
-    documentHtml("YarReader", `<h1>YarReader</h1><main data-library>${libraryMarkup(units)}</main>`)
-  );
-
+  await writeViewerAssets(stage);
+  const seriesCovers = await publishSeriesCovers(store, stage, units);
+  await writeAndSync(path.join(stage, "catalog.js"), catalogPayload(units, catalog, seriesCovers));
+  await writeAndSync(path.join(stage, "index.html"), renderRootHtml(units));
   const manifestUnits: Manifest["units"] = [];
   for (const unit of units) {
     const normalization = selectedRelease(unit)!.normalization!;
     const unitRoot = safeJoin(stage, "library", ...unit.id.split("/"));
     const pagesRoot = path.join(unitRoot, "pages");
     await mkdir(pagesRoot, { recursive: true });
-    const pageNames = new Array<string>(normalization.pages.length);
+    const sourceRoot = safeJoin(store.paths.work, ...normalization.workRelative.split("/"));
+    const pageNames = normalization.pages.map((page) => path.basename(page.file));
     await runBounded(normalization.pages, 8, async (page, index) => {
-      const sourceRoot = safeJoin(store.paths.work, ...normalization.workRelative.split("/"));
-      const outputName = path.basename(page.file);
-      await copyFile(safeJoin(sourceRoot, page.file), path.join(pagesRoot, outputName));
-      await fsyncFile(path.join(pagesRoot, outputName));
-      pageNames[index] = outputName;
+      const outputName = pageNames[index]!;
+      const expectedName = `${pad(index + 1, outputName.slice(0, outputName.indexOf(".")).length)}${path.extname(outputName)}`;
+      if (outputName.toLowerCase() !== expectedName.toLowerCase()) throw new Error(`Normalized page sequence is not canonical: ${unit.id}:${page.file}`);
+      await publishImmutable(safeJoin(sourceRoot, page.file), path.join(pagesRoot, outputName));
     });
-
-    const unitRelativeIndex = path.posix.join("library", unit.id, "index.html");
-    const libraryHref = path.posix.relative(path.posix.dirname(unitRelativeIndex), "index.html") || "index.html";
-    const pageMarkup = pageNames.map((page, index) =>
-      `<img src="pages/${escapeHtml(page)}" loading="${index === 0 ? "eager" : "lazy"}" decoding="async" alt="Page ${index + 1}">`
-    ).join("");
-    const body = `<header><a href="${escapeHtml(libraryHref)}">Library</a> · ${escapeHtml(unit.series)}</header><main class="pages" data-pages>${pageMarkup}</main>`;
-    await writeAndSync(path.join(unitRoot, "index.html"), documentHtml(unit.title ?? unit.id, body, "reader"));
+    await publishImmutable(await unitThumbnail(store, normalization), path.join(unitRoot, "thumbnail.webp"));
+    const rootPrefix = "../".repeat(unit.id.split("/").length + 1);
+    await writeAndSync(path.join(unitRoot, "index.html"), renderLeafHtml(unit, rootPrefix, pageNames));
     await fsyncDirectory(pagesRoot);
     await fsyncDirectory(unitRoot);
-    manifestUnits.push({ id: unit.id, pageCount: pageNames.length });
+    manifestUnits.push({ id: unit.id, pageCount: normalization.pages.length });
   }
 
   const files: Record<string, string> = {};
@@ -146,17 +337,27 @@ export async function validateExport(root: string): Promise<{ files: number; uni
       const text = await readFile(file, "utf8");
       if (/file:\/\/\/|\/Users\/|[A-Za-z]:\\\\/.test(text)) throw new Error(`Machine path leaked into export: ${relative}`);
       if (/\bfetch\s*\(|XMLHttpRequest|indexedDB|serviceWorker|\bimport\s*\(/i.test(text)) throw new Error(`Network/runtime API is forbidden in portable export: ${relative}`);
-      if (/\.html$/i.test(relative) && /<script\b/i.test(text)) throw new Error(`JavaScript is forbidden in portable reader HTML: ${relative}`);
     }
   });
 
   const rootHtml = await readFile(path.join(root, "index.html"), "utf8");
-  if (!rootHtml.includes("<main data-library>")) throw new Error("Portable root index is missing its static library markup");
+  if (!/<main\b[^>]*\bdata-library\b/i.test(rootHtml)) throw new Error("Portable root index is missing its static library markup");
   for (const unit of manifest.units) {
+    const rootHref = path.posix.join("library", unit.id, "index.html");
+    if (!rootHtml.includes(`href="${escapeHtml(rootHref)}"`)) throw new Error(`Portable root index is missing a static unit link: ${unit.id}`);
     const unitIndex = safeJoin(root, "library", ...unit.id.split("/"), "index.html");
     const html = await readFile(unitIndex, "utf8");
-    const imageCount = html.match(/<img\b[^>]*\bsrc="pages\/[^"]+"/gi)?.length ?? 0;
-    if (imageCount !== unit.pageCount) throw new Error(`Portable unit HTML does not contain every page image: ${unit.id}`);
+    const pagePrefix = `${path.posix.join("library", unit.id, "pages")}/`;
+    const expectedPages = expected
+      .filter((relative) => relative.startsWith(pagePrefix) && !relative.slice(pagePrefix.length).includes("/"))
+      .map((relative) => relative.slice(pagePrefix.length))
+      .sort((a, b) => a.localeCompare(b, "en", { numeric: true }));
+    const representedPages = [...html.matchAll(/<img\b[^>]*\bsrc=["']pages\/([^"']+)["']/gi)]
+      .map((match) => match[1]!)
+      .sort((a, b) => a.localeCompare(b, "en", { numeric: true }));
+    if (expectedPages.length !== unit.pageCount || JSON.stringify(representedPages) !== JSON.stringify(expectedPages)) {
+      throw new Error(`Portable unit HTML does not represent every expected page image: ${unit.id}`);
+    }
   }
 
   const pages = manifest.units.reduce((sum, unit) => sum + unit.pageCount, 0);
@@ -267,6 +468,8 @@ export async function exportLibrary(store: CatalogStore, hooks: ExportHooks = {}
     const validation = await validateExport(store.paths.activeExport);
     return { generation: recovered, units: validation.units, pages: validation.pages, files: validation.files, recovered: true };
   }
+  const curation = applyCatalogCuration(catalog, await loadSeriesCuration(store.paths.curation));
+  if (curation.changed) await store.save(catalog);
   const generation = Math.max(0, ...Object.values(catalog.exportBuilds).map((build) => build.generation)) + 1;
   const key = String(generation);
   const stageName = `.library-001.staging-g${String(generation).padStart(6, "0")}`;
