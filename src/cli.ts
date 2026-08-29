@@ -1,13 +1,16 @@
 #!/usr/bin/env node
+import { readFile } from "node:fs/promises";
 import { Command } from "commander";
 import { acquireFile, acquireFromManifestFile, acquireHttp } from "./acquisition.js";
 import { archive } from "./archive.js";
 import { CatalogStore } from "./catalog.js";
 import { classify, review } from "./classification.js";
 import { exportLibrary, validateActiveExport, validateExport } from "./export.js";
+import { atomicWriteJson } from "./fs.js";
 import { normalize, reconcileNormalizationPageCounts } from "./normalization.js";
 import { resolvePaths, initializePaths } from "./paths.js";
 import { build, update } from "./pipeline.js";
+import { rebaselineDryRun } from "./rebaseline.js";
 import { scan } from "./scanner.js";
 
 const program = new Command();
@@ -82,6 +85,16 @@ program.command("acquire")
     else if (adapter === "http") output(await acquireHttp(store, input, options.name));
     else if (adapter === "pages") output(await acquireFromManifestFile(store, input));
     else throw new Error(`Unknown acquisition adapter: ${adapter}`);
+  });
+program.command("rebaseline")
+  .requiredOption("--input <path...>", "read-only legacy source roots")
+  .option("--legacy-catalog <path>", "old catalog used only for audit comparison")
+  .option("--output <path>", "write JSON report; otherwise print it")
+  .action(async (options: { input: string[]; legacyCatalog?: string; output?: string }) => {
+    const legacy = options.legacyCatalog ? JSON.parse(await readFile(options.legacyCatalog, "utf8")) as unknown : undefined;
+    const report = await rebaselineDryRun(options.input, legacy);
+    if (options.output) { await atomicWriteJson(options.output, report); output({ report: options.output, totals: report.totals, discrepancies: report.discrepancies.length }); }
+    else output(report);
   });
 program.parseAsync().catch((error: unknown) => {
   process.stderr.write(`yar: ${(error as Error).message}\n`);
