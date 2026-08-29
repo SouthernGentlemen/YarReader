@@ -4,6 +4,7 @@ import path from "node:path";
 import test from "node:test";
 import { classify, review, type AiClassifier } from "../src/classification.js";
 import { ClassificationProposalSchema } from "../src/domain.js";
+import { normalize } from "../src/normalization.js";
 import { scan } from "../src/scanner.js";
 import { createBundleFromFiles } from "../src/zip.js";
 import { fixtureCbz, png, temporaryStore } from "./helpers.js";
@@ -126,6 +127,25 @@ test("schema-validated AI proposals persist by unchanged source hash", async (t)
   assert.equal(calls, 1);
   assert.equal((await classify(store, { ai })).accepted, 1);
   assert.equal(calls, 1);
+});
+
+test("human correction accepts a complete structured proposal", async (t) => {
+  const { paths, store } = await temporaryStore(t);
+  await png(path.join(paths.source, "Mystery.png"), "#abc");
+  await scan(store, 0); await classify(store);
+  const catalog = await store.load();
+  const source = Object.values(catalog.sources)[0]!;
+  const selector = `${source.id}:root`;
+  const proposal = { ...source.decisions.root!.proposal, series: "Curated", seriesSlug: "curated", unitType: "issue" as const, issue: 3, sequence: 3, confidence: 1, evidence: ["human correction"] };
+  const pending = await review(store, { correction: { selector, proposal } });
+  assert.equal(pending.length, 0);
+  assert.equal(Object.values((await store.load()).units)[0]!.series, "Curated");
+  await normalize(store);
+  await review(store, { retype: { seriesSlug: "curated", fromUnitType: "issue", unitType: "special" } });
+  const corrected = Object.values((await store.load()).units);
+  assert.equal(corrected.length, 1, "reclassification removes the stale canonical identity");
+  assert.equal(corrected[0]!.unitType, "special");
+  assert.equal(corrected[0]!.releases[0]!.normalization?.status, "verified", "verified normalization follows the corrected release");
 });
 
 test("alternate releases converge on one logical unit", async (t) => {
