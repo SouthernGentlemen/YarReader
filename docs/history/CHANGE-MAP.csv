@@ -37,3 +37,4 @@ YR-035,ad55ae1f621c45043e41641590bfdc376e7453a4,YarReader,3661f4e,2026-08-27,dec
 YR-036,558f11726e8a87af31f6150f36122df4da4fa031,YarReader,3661f4e,2026-08-27,decomposed,v1.0.0,source audit baseline and release records
 YR-037,b46868c9205c218fe9622ee25ce2d8c485dfc620,YarReader,3661f4e,2026-08-27,decomposed,v1.0.0,completed provenance and publication record
 YR-038,SELF,YarReader,b46868c,2026-08-29,direct,v1.0.1,align pull request automation with controlled change IDs
+YR-039,SELF,YarReader,fea2507,2026-08-29,direct,v1.0.2,align the public README package metadata and canonical repository location

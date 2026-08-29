@@ -1,7 +1,8 @@
 {
   "name": "yarreader",
-  "version": "1.0.0",
-  "description": "Crash-recoverable publication ingestion and portable static reading",
+  "version": "1.0.1",
+  "private": true,
+  "description": "Crash-recoverable publication ingestion and portable static reader.",
   "license": "MIT",
   "type": "module",
   "private": true,
