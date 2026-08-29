@@ -1,4 +1,4 @@
-import { copyFile, lstat, mkdir, readFile, readlink, rename, rm, stat, symlink, writeFile } from "node:fs/promises";
+import { copyFile, cp, lstat, mkdir, readFile, readlink, rename, rm, stat, symlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
 import type { CatalogStore } from "./catalog.js";
@@ -174,6 +174,40 @@ async function activeTarget(store: CatalogStore): Promise<string | undefined> {
     return resolved;
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
+    throw error;
+  }
+}
+
+async function pathExists(target: string): Promise<boolean> {
+  try {
+    await lstat(target);
+    return true;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return false;
+    throw error;
+  }
+}
+
+export async function materializePortableExport(store: CatalogStore, destination: string): Promise<{ destination: string; files: number; units: number; pages: number; manifestSha256: string }> {
+  const target = await activeTarget(store);
+  if (!target) throw new Error("No active export exists");
+  await validateExport(target);
+
+  const destinationRoot = path.resolve(destination);
+  if (await pathExists(destinationRoot)) throw new Error(`Portable export destination already exists: ${destinationRoot}`);
+  const parent = path.dirname(destinationRoot);
+  await mkdir(parent, { recursive: true });
+  const temporary = path.join(parent, `.${path.basename(destinationRoot)}.portable-${process.pid}`);
+  await rm(temporary, { recursive: true, force: true });
+
+  try {
+    await cp(target, temporary, { recursive: true, dereference: true, errorOnExist: true, force: false, preserveTimestamps: true });
+    await validateExport(temporary);
+    await rename(temporary, destinationRoot);
+    const validation = await validateExport(destinationRoot);
+    return { destination: destinationRoot, ...validation };
+  } catch (error) {
+    await rm(temporary, { recursive: true, force: true }).catch(() => undefined);
     throw error;
   }
 }

@@ -5,7 +5,7 @@ import { acquireFile, acquireFromManifestFile, acquireHttp } from "./acquisition
 import { archive } from "./archive.js";
 import { CatalogStore } from "./catalog.js";
 import { classify, review } from "./classification.js";
-import { exportLibrary, validateActiveExport, validateExport } from "./export.js";
+import { exportLibrary, materializePortableExport, validateActiveExport, validateExport } from "./export.js";
 import { atomicWriteJson } from "./fs.js";
 import { auditLegacyCatalog } from "./legacy-audit.js";
 import { normalize, reconcileNormalizationPageCounts } from "./normalization.js";
@@ -69,6 +69,10 @@ program.command("normalize")
 });
 program.command("archive").action(async () => { const { store } = await context(true); output(await archive(store)); });
 program.command("export").action(async () => { const { store } = await context(true); output(await exportLibrary(store)); });
+program.command("portable")
+  .description("materialize the active reader as a real, self-contained directory for USB/tablet use")
+  .argument("<destination>")
+  .action(async (destination: string) => { const { store } = await context(true); output(await materializePortableExport(store, destination)); });
 program.command("validate").argument("[path]").action(async (target?: string) => {
   const { store } = await context(true); output(target ? await validateExport(target) : await validateActiveExport(store));
 });
