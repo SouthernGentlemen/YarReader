@@ -1,2 +1,3 @@
 public_id,public_sha,source_repo,source_sha,source_date,mapping_type,release,notes
 YR-001,,YarReader,08e2250,2026-08-20,decomposed,v0.1.0,project foundation and minimal CLI
+YR-002,,YarReader,08e2250,2026-08-20,decomposed,v0.1.0,filesystem integrity and path-safety primitives
