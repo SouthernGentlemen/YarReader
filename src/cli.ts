@@ -7,6 +7,7 @@ import { CatalogStore } from "./catalog.js";
 import { classify, review } from "./classification.js";
 import { exportLibrary, validateActiveExport, validateExport } from "./export.js";
 import { atomicWriteJson } from "./fs.js";
+import { auditLegacyCatalog } from "./legacy-audit.js";
 import { normalize, reconcileNormalizationPageCounts } from "./normalization.js";
 import { migrateLegacy } from "./migration.js";
 import { resolvePaths, initializePaths } from "./paths.js";
@@ -113,6 +114,18 @@ program.command("migrate")
     });
     output({ ...result, items: result.items.length > 100 ? result.items.slice(0, 100) : result.items, itemCount: result.items.length });
   });
+program.command("audit-legacy")
+  .description("compare every old catalog unit and curated field with the greenfield catalog")
+  .requiredOption("--legacy-catalog <path>")
+  .requiredOption("--output <path>")
+  .action(async (options: { legacyCatalog: string; output: string }) => {
+    const { store } = await context(true);
+    const legacy = JSON.parse(await readFile(options.legacyCatalog, "utf8")) as unknown;
+    const report = auditLegacyCatalog(await store.load(), legacy);
+    await atomicWriteJson(options.output, report);
+    output({ report: options.output, summary: report.summary });
+  });
+
 program.parseAsync().catch((error: unknown) => {
   process.stderr.write(`yar: ${(error as Error).message}\n`);
   process.exitCode = 1;
