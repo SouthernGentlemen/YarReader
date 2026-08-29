@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { lstat, readFile } from "node:fs/promises";
+import { lstat, readFile, readlink } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
 import { classify } from "../src/classification.js";
@@ -36,4 +36,18 @@ test("export membership validation is order-independent for fractional identitie
   const built = await exportLibrary(store);
   assert.equal(built.units, 2);
   assert.equal((await validateActiveExport(store)).pages, 4);
+});
+
+test("failed activation leaves the last valid export active and resumes", async (t) => {
+  const { root, paths, store } = await readyFixture(t);
+  await exportLibrary(store);
+  const oldTarget = await readlink(paths.activeExport);
+  await fixtureCbz(root, path.join(paths.source, "Fixture 002.cbz"), "Fixture Series", 2);
+  await scan(store, 0); await classify(store); await normalize(store);
+  await assert.rejects(exportLibrary(store, { beforeActivation: async () => { throw new Error("simulated interruption"); } }), /simulated interruption/);
+  assert.equal(await readlink(paths.activeExport), oldTarget);
+  assert.equal((await validateActiveExport(store)).units, 1);
+  const recovered = await exportLibrary(store);
+  assert.equal(recovered.recovered, true);
+  assert.equal((await validateActiveExport(store)).units, 2);
 });
