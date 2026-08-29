@@ -20,3 +20,4 @@ YR-018,,YarReader,08e2250,2026-08-20,decomposed,v0.5.0,archive-only rebuild proo
 YR-019,,YarReader,08e2250,2026-08-20,decomposed,v0.6.0,read-only legacy rebaseline audit
 YR-020,,YarReader,08e2250,2026-08-20,decomposed,v0.6.0,non-destructive legacy migration
 YR-021,,YarReader,08e2250,2026-08-20,decomposed,v0.6.0,legacy identity and curation comparison
+YR-022,,YarReader,08e2250,2026-08-20,decomposed,v0.6.0,runtime boundary and catalog durability tests
