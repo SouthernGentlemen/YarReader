@@ -5,3 +5,4 @@ YR-003,,YarReader,08e2250,2026-08-20,decomposed,v0.1.0,authoritative workspace a
 YR-004,,YarReader,08e2250,2026-08-20,decomposed,v0.1.0,versioned catalog and source identity model
 YR-005,,YarReader,08e2250,2026-08-20,decomposed,v0.1.0,deterministic ZIP and stored-bundle primitives
 YR-006,,YarReader,08e2250,2026-08-20,decomposed,v0.1.0,publication inspection adapters
+YR-007,,YarReader,08e2250,2026-08-20,decomposed,v0.1.0,stable recursive discovery
