@@ -8,6 +8,17 @@ export type SourceFormat = z.infer<typeof SourceFormat>;
 export const UnitType = z.enum(["issue", "chapter", "volume", "annual", "special", "book", "unknown"]);
 export type UnitType = z.infer<typeof UnitType>;
 
+export const ReadingMode = z.enum(["ltr", "rtl", "scroll"]);
+export type ReadingMode = z.infer<typeof ReadingMode>;
+
+export const SeriesMetadataSchema = z.object({
+  series: z.string().min(1),
+  readingMode: ReadingMode,
+  genres: z.array(z.string().min(1)),
+  updatedAt: IsoDate
+}).strict();
+export type SeriesMetadata = z.infer<typeof SeriesMetadataSchema>;
+
 export const EmbeddedMetadataSchema = z.object({
   series: z.string().min(1).optional(),
   unitType: UnitType.optional(),
@@ -22,6 +33,8 @@ export const EmbeddedMetadataSchema = z.object({
   publisher: z.string().optional(),
   language: z.string().optional(),
   direction: z.enum(["ltr", "rtl"]).optional(),
+  readingMode: ReadingMode.optional(),
+  genres: z.array(z.string().min(1)).optional(),
   tags: z.array(z.string()).optional(),
   summary: z.string().optional()
 }).strict();
@@ -198,6 +211,7 @@ export const CatalogSchema = z.object({
   occurrences: z.record(z.string(), OccurrenceSchema),
   units: z.record(z.string(), UnitRecordSchema),
   aiDecisions: z.record(z.string(), z.record(z.string(), ClassificationProposalSchema)),
+  seriesMetadata: z.record(z.string(), SeriesMetadataSchema).default({}),
   archiveTransactions: z.record(z.string(), ArchiveTransactionSchema),
   exportBuilds: z.record(z.string(), ExportBuildSchema),
   activeExportGeneration: z.number().int().positive().optional(),
@@ -214,6 +228,7 @@ export function emptyCatalog(): Catalog {
     occurrences: {},
     units: {},
     aiDecisions: {},
+    seriesMetadata: {},
     archiveTransactions: {},
     exportBuilds: {},
     acquisitions: {}

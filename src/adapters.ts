@@ -6,7 +6,7 @@ import { promisify } from "node:util";
 import { XMLParser } from "fast-xml-parser";
 import { createExtractorFromFile } from "node-unrar-js";
 import { z } from "zod";
-import { EmbeddedMetadataSchema, InspectionSchema, UnitType, type EmbeddedMetadata, type Inspection, type InspectionUnit, type SourceFormat } from "./domain.js";
+import { EmbeddedMetadataSchema, InspectionSchema, ReadingMode, UnitType, type EmbeddedMetadata, type Inspection, type InspectionUnit, type SourceFormat } from "./domain.js";
 import { isPartialName, listTree, safeJoin, sha256File } from "./fs.js";
 import { extractZipEntries, listZip, readZipEntry, sha256ZipEntry } from "./zip.js";
 
@@ -63,9 +63,14 @@ export function parseComicInfo(xml: string): EmbeddedMetadata {
   const artists = stringList([info.Penciller, info.Inker, info.Colorist].filter(Boolean).join(",")); if (artists) metadata.artists = artists;
   if (typeof info.Publisher === "string") metadata.publisher = info.Publisher;
   if (typeof info.LanguageISO === "string") metadata.language = info.LanguageISO;
-  const tags = stringList(info.Genre); if (tags) metadata.tags = tags;
+  const genres = stringList(info.Genre); if (genres) { metadata.genres = genres; metadata.tags = genres; }
   if (typeof info.Summary === "string") metadata.summary = info.Summary;
-  if (String(info.Manga).toLowerCase().includes("yes")) metadata.direction = "rtl";
+  if (typeof info.YarReaderReadingMode === "string" && ReadingMode.safeParse(info.YarReaderReadingMode.toLowerCase()).success) {
+    metadata.readingMode = ReadingMode.parse(info.YarReaderReadingMode.toLowerCase());
+  } else if (String(info.Manga).toLowerCase().includes("yes")) {
+    metadata.readingMode = "rtl";
+  }
+  if (metadata.readingMode === "rtl") metadata.direction = "rtl";
   return EmbeddedMetadataSchema.parse(metadata);
 }
 
